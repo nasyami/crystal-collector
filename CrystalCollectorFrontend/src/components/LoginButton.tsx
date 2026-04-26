@@ -13,6 +13,9 @@ const LoginButton = () => {
         'VITE_XSOLLA_REDIRECT_URI:',
         import.meta.env.VITE_XSOLLA_REDIRECT_URI
       );
+
+      const redirectUri = import.meta.env.VITE_XSOLLA_REDIRECT_URI;
+      console.log('Final redirectUri:', redirectUri);
       console.log('Creating Xsolla Login Widget');
 
       const xl = new Widget({
@@ -20,7 +23,8 @@ const LoginButton = () => {
         preferredLocale: 'en',
         clientId: import.meta.env.VITE_XSOLLA_CLIENT_ID,
         responseType: 'token',
-        callbackUrl: import.meta.env.VITE_XSOLLA_REDIRECT_URI,
+        callbackUrl: redirectUri,
+        redirectUri: redirectUri,
       });
 
       const container = document.getElementById('xl_auth');
