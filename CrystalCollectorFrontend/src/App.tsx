@@ -50,14 +50,14 @@ const App = () => {
       setError('');
 
       try {
-        const itemsRes = await api.get<ColorItem[]>('/v1/items');
+        const itemsRes = await api.get<ColorItem[]>(`${API_BASE_URL}/v1/items`);
         setItems(itemsRes.data);
       } catch {
         setError('Failed to load shop items');
       }
 
       try {
-        const ownedRes = await api.get<OwnedItemsResponse>('/v1/me/items');
+        const ownedRes = await api.get<OwnedItemsResponse>(`${API_BASE_URL}/v1/me/items`);
         setOwnedItemIds(ownedRes.data.items.map((item) => item.id));
       } catch {
         setOwnedItemIds([]);
@@ -84,11 +84,11 @@ const App = () => {
       console.log('accessToken exists:', Boolean(accessToken));
 
       const { data: response } = await api.post<PaymentTokenResponse>(
-        '/v1/payments/token',
+        `${API_BASE_URL}/v1/payments/token`,
         {
           item_id: itemId,
         },
-        {
+      );
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },
