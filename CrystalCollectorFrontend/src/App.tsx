@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { api } from './api';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081';
 import Home from './pages/Home';
 import Game from './pages/Game';
 import Shop from './pages/Shop';
@@ -83,21 +85,20 @@ const App = () => {
       const accessToken = localStorage.getItem('accessToken');
       console.log('accessToken exists:', Boolean(accessToken));
 
-      const { data: response } = await api.post<PaymentTokenResponse>(
+
+      const response = await api.post<PaymentTokenResponse>(
         `${API_BASE_URL}/v1/payments/token`,
-        {
-          item_id: itemId,
-        },
+        { item_id: itemId },
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
-          }
+          },
         }
       );
-      console.log(response);
+      console.log(response.data);
 
-      if (response.pay_station_url) {
-        window.location.href = response.pay_station_url;
+      if (response.data.pay_station_url) {
+        window.location.href = response.data.pay_station_url;
       }
 
       setOwnedItemIds((current) =>
