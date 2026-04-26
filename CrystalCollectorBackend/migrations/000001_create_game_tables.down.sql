@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS payments;
+DROP TABLE IF EXISTS player_items;
+DROP TABLE IF EXISTS shop_items;
+DROP TABLE IF EXISTS players;
