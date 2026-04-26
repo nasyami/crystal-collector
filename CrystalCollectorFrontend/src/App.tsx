@@ -91,7 +91,7 @@ const App = () => {
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
-          },
+          }
         }
       );
       console.log(response);
