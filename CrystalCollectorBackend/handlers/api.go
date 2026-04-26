@@ -224,7 +224,15 @@ func loadXsollaConfig() (xsollaConfig, error) {
 	cfg := xsollaConfig{
 		ProjectID: os.Getenv("XSOLLA_PROJECT_ID"),
 		APIKey:    os.Getenv("XSOLLA_API_KEY"),
-		ReturnURL: os.Getenv("XSOLLA_RETURN_URL"), // Example: http://localhost:5173/shop
+		ReturnURL: getReturnURL(), // Example: http://localhost:5173/shop
+	// getReturnURL returns the XSOLLA_RETURN_URL env or a default fallback
+	func getReturnURL() string {
+	       url := os.Getenv("XSOLLA_RETURN_URL")
+	       if url == "" {
+		       url = "https://crystal-collector-ten.vercel.app/shop"
+	       }
+	       return url
+	}
 	}
 	var missing []string
 	if cfg.ProjectID == "" {
