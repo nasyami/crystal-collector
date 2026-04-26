@@ -88,7 +88,7 @@ const App = () => {
         {
           item_id: itemId,
         },
-      );
+        {
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },
