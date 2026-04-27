@@ -436,11 +436,19 @@ func (api *API) XsollaWebhook(w http.ResponseWriter, r *http.Request) {
 	switch notificationType {
 	case "user_validation":
 		if userID != "" {
-			if err := api.store.EnsurePlayer(userID); err != nil {
-				log.Printf("xsolla user_validation: failed to ensure player %s: %v", userID, err)
-			} else {
-				log.Printf("xsolla user_validation: player ensured for %s", userID)
+			log.Println("user_validation received:", userID)
+			_, err := api.store.DB.Exec(`
+				INSERT INTO players (username)
+				VALUES ($1)
+				ON CONFLICT (username) DO NOTHING
+			`, userID)
+			if err != nil {
+				log.Println("failed to create player:", err)
+				http.Error(w, "error", http.StatusInternalServerError)
+				return
 			}
+			w.WriteHeader(http.StatusOK)
+			return
 		}
 	default:
 		if isSuccessfulPaymentNotification(event) {
