@@ -53,7 +53,7 @@ const App = () => {
 
       try {
         const itemsRes = await api.get<ColorItem[]>(`${API_BASE_URL}/v1/items`);
-        setItems(itemsRes.data);
+        setItems(itemsRes.data ?? []);
       } catch {
         setError('Failed to load shop items');
       }
@@ -82,18 +82,9 @@ const App = () => {
   const handleBuyItem = async (itemId: string) => {
     try {
       setError('');
-      const accessToken = localStorage.getItem('accessToken');
-      console.log('accessToken exists:', Boolean(accessToken));
-
-
       const response = await api.post<PaymentTokenResponse>(
         `${API_BASE_URL}/v1/payments/token`,
         { item_id: itemId },
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
       );
       console.log(response.data);
 

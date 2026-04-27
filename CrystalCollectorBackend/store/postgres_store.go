@@ -22,10 +22,10 @@ func NewPostgresStore(connStr string) (*PostgresStore, error) {
 func (s *PostgresStore) Items() []models.Item {
 	rows, err := s.DB.Query(`SELECT sku, name, description, price_cents FROM shop_items ORDER BY id`)
 	if err != nil {
-		return nil
+		return []models.Item{}
 	}
 	defer rows.Close()
-	var items []models.Item
+	items := []models.Item{}
 	for rows.Next() {
 		var item models.Item
 		if err := rows.Scan(&item.ID, &item.Name, &item.Description, &item.PriceCents); err != nil {
@@ -53,7 +53,7 @@ func (s *PostgresStore) GetOwnedItems(xsollaSub string) ([]models.Item, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []models.Item
+	items := []models.Item{}
 	for rows.Next() {
 		var item models.Item
 		if err := rows.Scan(&item.ID, &item.Name, &item.Description, &item.PriceCents); err != nil {
