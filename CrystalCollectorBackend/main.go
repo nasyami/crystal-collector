@@ -22,6 +22,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to connect to db: %v", err)
 	}
+	if err := postgresStore.Migrate(); err != nil {
+		log.Fatalf("failed to run migrations: %v", err)
+	}
 	if err := postgresStore.SeedItems(); err != nil {
 		log.Fatalf("failed to seed shop_items: %v", err)
 	}

@@ -19,6 +19,38 @@ func NewPostgresStore(connStr string) (*PostgresStore, error) {
 	return &PostgresStore{DB: db}, nil
 }
 
+func (s *PostgresStore) Migrate() error {
+	_, err := s.DB.Exec(`
+		CREATE TABLE IF NOT EXISTS shop_items (
+			id          INTEGER PRIMARY KEY,
+			sku         TEXT    NOT NULL UNIQUE,
+			name        TEXT    NOT NULL,
+			description TEXT    NOT NULL,
+			price_cents INTEGER NOT NULL
+		);
+
+		CREATE TABLE IF NOT EXISTS players (
+			id       BIGSERIAL PRIMARY KEY,
+			username TEXT NOT NULL UNIQUE
+		);
+
+		CREATE TABLE IF NOT EXISTS player_items (
+			player_id    BIGINT  NOT NULL REFERENCES players(id),
+			shop_item_id INTEGER NOT NULL REFERENCES shop_items(id),
+			UNIQUE (player_id, shop_item_id)
+		);
+
+		CREATE TABLE IF NOT EXISTS payments (
+			id         TEXT PRIMARY KEY,
+			player_id  TEXT NOT NULL,
+			item_id    TEXT NOT NULL,
+			status     TEXT NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		);
+	`)
+	return err
+}
+
 func (s *PostgresStore) SeedItems() error {
 	_, err := s.DB.Exec(`
 		INSERT INTO shop_items (id, sku, name, description, price_cents) VALUES
