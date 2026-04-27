@@ -19,6 +19,19 @@ func NewPostgresStore(connStr string) (*PostgresStore, error) {
 	return &PostgresStore{DB: db}, nil
 }
 
+func (s *PostgresStore) SeedItems() error {
+	_, err := s.DB.Exec(`
+		INSERT INTO shop_items (id, sku, name, description, price_cents) VALUES
+			(1, 'skin_blue',   'Blue Skin',   'A cool blue crystal skin',   199),
+			(2, 'skin_red',    'Red Skin',    'A fiery red crystal skin',   199),
+			(3, 'skin_green',  'Green Skin',  'A lush green crystal skin',  199),
+			(4, 'skin_purple', 'Purple Skin', 'A royal purple crystal skin',199),
+			(5, 'skin_orange', 'Orange Skin', 'A vibrant orange crystal skin',199)
+		ON CONFLICT (id) DO NOTHING
+	`)
+	return err
+}
+
 func (s *PostgresStore) Items() []models.Item {
 	rows, err := s.DB.Query(`SELECT sku, name, description, price_cents FROM shop_items ORDER BY id`)
 	if err != nil {

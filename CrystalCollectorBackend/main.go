@@ -22,6 +22,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to connect to db: %v", err)
 	}
+	if err := postgresStore.SeedItems(); err != nil {
+		log.Fatalf("failed to seed shop_items: %v", err)
+	}
 	api := handlers.NewAPI(postgresStore)
 
 	mux := http.NewServeMux()
