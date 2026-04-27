@@ -9,7 +9,6 @@ import (
 	"game-backend/store"
 
 	"github.com/joho/godotenv"
-	
 )
 
 func main() {
@@ -22,10 +21,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to connect to db: %v", err)
 	}
-	if err := postgresStore.Migrate(); err != nil {
-		log.Fatalf("failed to run migrations: %v", err)
+	if err := store.EnsureSchema(postgresStore.DB); err != nil {
+		log.Fatalf("failed to ensure schema: %v", err)
 	}
-	if err := postgresStore.SeedItems(); err != nil {
+	if err := store.SeedShopItems(postgresStore.DB); err != nil {
 		log.Fatalf("failed to seed shop_items: %v", err)
 	}
 	api := handlers.NewAPI(postgresStore)
