@@ -99,6 +99,11 @@ type xsollaWebhookEvent struct {
 		Items []struct {
 			SKU string `json:"sku"`
 		} `json:"items"`
+		VirtualItems struct {
+			Items []struct {
+				SKU string `json:"sku"`
+			} `json:"items"`
+		} `json:"virtual_items"`
 	} `json:"purchase"`
 	Order struct {
 		Status string `json:"status"`
@@ -423,33 +428,47 @@ func (api *API) XsollaWebhook(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid webhook json"})
 		return
 	}
-	log.Printf("xsolla webhook parsed event: %+v", event)
 
-	notificationType := detectNotificationType(event)
-	if isSuccessfulPaymentNotification(event) {
-		playerID := event.User.ID.Value // xsolla sub
-		sku := ""
-		if len(event.Purchase.Items) > 0 {
-			sku = event.Purchase.Items[0].SKU
-		}
-		if playerID != "" && sku != "" {
-			if err := api.store.GrantItem(playerID, sku); err != nil {
-				log.Printf("failed to grant item: %v", err)
+	notificationType := strings.ToLower(event.NotificationType)
+	userID := event.User.ID.Value
+	log.Printf("xsolla webhook notification_type=%s user.id=%s", notificationType, userID)
+
+	switch notificationType {
+	case "user_validation":
+		if userID != "" {
+			if err := api.store.EnsurePlayer(userID); err != nil {
+				log.Printf("xsolla user_validation: failed to ensure player %s: %v", userID, err)
 			} else {
-				log.Printf("granted item %s to player %s", sku, playerID)
+				log.Printf("xsolla user_validation: player ensured for %s", userID)
 			}
-		} else {
-			log.Printf("webhook missing player id or sku: player_id=%q sku=%q", playerID, sku)
+		}
+	default:
+		if isSuccessfulPaymentNotification(event) {
+			sku := extractWebhookSKU(event)
+			log.Printf("xsolla payment: user.id=%s sku=%s", userID, sku)
+			if userID != "" && sku != "" {
+				if err := api.store.GrantItem(userID, sku); err != nil {
+					log.Printf("xsolla payment: failed to grant item %s to %s: %v", sku, userID, err)
+				} else {
+					log.Printf("xsolla payment: granted item %s to player %s", sku, userID)
+				}
+			} else {
+				log.Printf("xsolla payment: missing user.id=%q or sku=%q, skipping grant", userID, sku)
+			}
 		}
 	}
-
-	log.Printf("xsolla webhook notification type: %s", notificationType)
 
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
-func detectNotificationType(event xsollaWebhookEvent) string {
-	return event.NotificationType
+func extractWebhookSKU(event xsollaWebhookEvent) string {
+	if len(event.Purchase.VirtualItems.Items) > 0 {
+		return event.Purchase.VirtualItems.Items[0].SKU
+	}
+	if len(event.Purchase.Items) > 0 {
+		return event.Purchase.Items[0].SKU
+	}
+	return ""
 }
 
 func isSuccessfulPaymentNotification(event xsollaWebhookEvent) bool {

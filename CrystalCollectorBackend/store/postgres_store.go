@@ -198,3 +198,11 @@ func (s *PostgresStore) GrantItem(xsollaSub, sku string) error {
 
 	return tx.Commit()
 }
+
+func (s *PostgresStore) EnsurePlayer(xsollaSub string) error {
+	_, err := s.DB.Exec(
+		`INSERT INTO players (username) VALUES ($1) ON CONFLICT (username) DO NOTHING`,
+		xsollaSub,
+	)
+	return err
+}
