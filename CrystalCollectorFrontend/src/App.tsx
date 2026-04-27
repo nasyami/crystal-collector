@@ -45,11 +45,34 @@ const App = () => {
   const [equippedColor, setEquippedColor] = useState<string>(DEFAULT_COLOR);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [buyStatus, setBuyStatus] = useState('');
+
+  const refreshOwnedItems = async () => {
+    try {
+      console.log('[App] calling /v1/me/items');
+      const ownedRes = await api.get<OwnedItemsResponse>(`${API_BASE_URL}/v1/me/items`);
+      console.log('[App] /v1/me/items response:', ownedRes.data.items);
+      setOwnedItemIds((ownedRes.data.items ?? []).map((item) => item.id));
+    } catch {
+      setOwnedItemIds([]);
+    }
+  };
 
   useEffect(() => {
     const loadShop = async () => {
       setLoading(true);
       setError('');
+
+      const token = localStorage.getItem('accessToken');
+      console.log('[App] token exists:', !!token);
+      if (token) {
+        try {
+          const decoded = JSON.parse(atob(token.split('.')[1]));
+          console.log('[App] decoded user:', decoded);
+        } catch {
+          console.log('[App] failed to decode token');
+        }
+      }
 
       try {
         const itemsRes = await api.get<ColorItem[]>(`${API_BASE_URL}/v1/items`);
@@ -58,17 +81,19 @@ const App = () => {
         setError('Failed to load shop items');
       }
 
-      try {
-        const ownedRes = await api.get<OwnedItemsResponse>(`${API_BASE_URL}/v1/me/items`);
-        setOwnedItemIds(ownedRes.data.items.map((item) => item.id));
-      } catch {
-        setOwnedItemIds([]);
-      } finally {
-        setLoading(false);
-      }
+      await refreshOwnedItems();
+      setLoading(false);
     };
 
     void loadShop();
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('status') === 'done') {
+      setBuyStatus('Payment successful');
+      void refreshOwnedItems();
+    }
   }, []);
 
   const ownedColors = useMemo(
@@ -79,9 +104,14 @@ const App = () => {
     [items, ownedItemIds]
   );
 
+  const handleLogout = () => {
+    setOwnedItemIds([]);
+  };
+
   const handleBuyItem = async (itemId: string) => {
     try {
       setError('');
+      setBuyStatus('Processing payment...');
       const response = await api.post<PaymentTokenResponse>(
         `${API_BASE_URL}/v1/payments/token`,
         { item_id: itemId },
@@ -96,6 +126,7 @@ const App = () => {
         current.includes(itemId) ? current : [...current, itemId]
       );
     } catch {
+      setBuyStatus('');
       setError('Failed to start checkout');
     }
   };
@@ -130,8 +161,10 @@ const App = () => {
               equippedColor={equippedColor}
               loading={loading}
               error={error}
+              buyStatus={buyStatus}
               onBuyItem={handleBuyItem}
               onApplyItem={handleApplyItem}
+              onLogout={handleLogout}
             />
           }
         />
