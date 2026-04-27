@@ -18,7 +18,7 @@ import (
 )
 
 type API struct {
-	store *store.MockStore
+	store *store.PostgresStore
 }
 
 type createPaymentTokenRequest struct {
@@ -108,7 +108,7 @@ type xsollaWebhookEvent struct {
 	} `json:"payment"`
 }
 
-func NewAPI(store *store.MockStore) *API {
+func NewAPI(store *store.PostgresStore) *API {
 	return &API{store: store}
 }
 
@@ -128,11 +128,21 @@ func (api *API) GetMe(w http.ResponseWriter, r *http.Request) {
 
 // GET /v1/me/items
 func (api *API) GetMyItems(w http.ResponseWriter, r *http.Request) {
-	resp := map[string]any{
-		"player_id": "demo_player",
-		"items":     api.store.OwnedItems("demo_player"),
+	authHeader := r.Header.Get("Authorization")
+	userClaims, err := extractXsollaUserClaims(authHeader)
+	if err != nil {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
 	}
-	writeJSON(w, http.StatusOK, resp)
+	items, err := api.store.GetOwnedItems(userClaims.Sub)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "db error"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"player_id": userClaims.Sub,
+		"items":     items,
+	})
 }
 
 // POST /v1/payments/token
@@ -417,18 +427,16 @@ func (api *API) XsollaWebhook(w http.ResponseWriter, r *http.Request) {
 
 	notificationType := detectNotificationType(event)
 	if isSuccessfulPaymentNotification(event) {
-		playerID := event.User.ID.Value
+		playerID := event.User.ID.Value // xsolla sub
 		sku := ""
 		if len(event.Purchase.Items) > 0 {
 			sku = event.Purchase.Items[0].SKU
 		}
-
 		if playerID != "" && sku != "" {
-			if item, ok := api.findItemByID(sku); ok {
-				api.store.GrantItem(playerID, item)
-				log.Printf("granted item %s to player %s", sku, playerID)
+			if err := api.store.GrantItem(playerID, sku); err != nil {
+				log.Printf("failed to grant item: %v", err)
 			} else {
-				log.Printf("webhook item not found for sku: %s", sku)
+				log.Printf("granted item %s to player %s", sku, playerID)
 			}
 		} else {
 			log.Printf("webhook missing player id or sku: player_id=%q sku=%q", playerID, sku)

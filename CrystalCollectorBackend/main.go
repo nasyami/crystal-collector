@@ -3,10 +3,13 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 
 	"game-backend/handlers"
 	"game-backend/store"
+
 	"github.com/joho/godotenv"
+	
 )
 
 func main() {
@@ -14,8 +17,12 @@ func main() {
 		log.Printf("failed to load .env file: %v", err)
 	}
 
-	mockStore := store.NewMockStore()
-	api := handlers.NewAPI(mockStore)
+	connStr := os.Getenv("DATABASE_URL")
+	postgresStore, err := store.NewPostgresStore(connStr)
+	if err != nil {
+		log.Fatalf("failed to connect to db: %v", err)
+	}
+	api := handlers.NewAPI(postgresStore)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", api.Health)
