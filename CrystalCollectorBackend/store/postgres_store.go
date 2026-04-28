@@ -20,42 +20,45 @@ func NewPostgresStore(connStr string) (*PostgresStore, error) {
 }
 
 func EnsureSchema(db *sql.DB) error {
-	_, err := db.Exec(`
-		CREATE TABLE IF NOT EXISTS shop_items (
-			id BIGSERIAL PRIMARY KEY,
-			sku TEXT NOT NULL UNIQUE,
-			name TEXT NOT NULL,
-			description TEXT NOT NULL,
-			price_cents INTEGER NOT NULL CHECK (price_cents >= 0),
-			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-		);
-		CREATE TABLE IF NOT EXISTS players (
-			id BIGSERIAL PRIMARY KEY,
-			username TEXT NOT NULL UNIQUE,
-			crystals INTEGER NOT NULL DEFAULT 0 CHECK (crystals >= 0),
-			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-		);
-		CREATE TABLE IF NOT EXISTS player_items (
-			id BIGSERIAL PRIMARY KEY,
-			player_id BIGINT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
-			shop_item_id BIGINT NOT NULL REFERENCES shop_items(id) ON DELETE RESTRICT,
-			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-			UNIQUE (player_id, shop_item_id)
-		);
-		CREATE TABLE IF NOT EXISTS payments (
-			id BIGSERIAL PRIMARY KEY,
-			player_id BIGINT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
-			provider_payment_id TEXT NOT NULL UNIQUE,
-			amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
-			currency CHAR(3) NOT NULL CHECK (currency = UPPER(currency)),
-			status TEXT NOT NULL CHECK (status IN ('pending', 'paid', 'failed', 'refunded')),
-			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-		);
-	`)
-	return err
-}
+	       tx, err := s.DB.Begin()
+	       if err != nil {
+		       return err
+	       }
+	       defer tx.Rollback()
 
-func SeedShopItems(db *sql.DB) error {
+	       // Ensure player_id column is TEXT
+	       tx.Exec(`ALTER TABLE player_items ALTER COLUMN player_id TYPE TEXT;`)
+
+	       var playerID string
+	       err = tx.QueryRow(`SELECT id FROM players WHERE username = $1`, xsollaSub).Scan(&playerID)
+	       if err == sql.ErrNoRows {
+		       // Use xsollaSub as the player ID (UUID string)
+		       playerID = xsollaSub
+		       _, err = tx.Exec(`INSERT INTO players (id, username) VALUES ($1, $2)`, playerID, xsollaSub)
+		       if err != nil {
+			       return err
+		       }
+	       } else if err != nil {
+		       return err
+	       }
+
+	       // itemID is the shop_items.id (e.g., 'skin_blue')
+	       var shopItemID string
+	       err = tx.QueryRow(`SELECT id FROM shop_items WHERE id = $1`, itemID).Scan(&shopItemID)
+	       if err != nil {
+		       return err
+	       }
+
+	       // Use a generated UUID for player_items.id if needed, or a composite key
+	       playerItemID := playerID + ":" + shopItemID
+	       if _, err = tx.Exec(
+		       `INSERT INTO player_items (id, player_id, item_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+		       playerItemID, playerID, shopItemID,
+	       ); err != nil {
+		       return err
+	       }
+
+	       return tx.Commit()
 	var count int
 	if err := db.QueryRow("SELECT COUNT(*) FROM shop_items").Scan(&count); err != nil {
 		return err

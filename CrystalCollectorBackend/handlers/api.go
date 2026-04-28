@@ -89,26 +89,30 @@ type xsollaUserClaims struct {
 }
 
 type xsollaWebhookEvent struct {
-	NotificationType string `json:"notification_type"`
-	User             struct {
-		ID string `json:"id"`
-	} `json:"user"`
-	Purchase struct {
-		Items []struct {
-			SKU string `json:"sku"`
-		} `json:"items"`
-		VirtualItems struct {
-			Items []struct {
-				SKU string `json:"sku"`
-			} `json:"items"`
-		} `json:"virtual_items"`
-	} `json:"purchase"`
-	Order struct {
-		Status string `json:"status"`
-	} `json:"order"`
-	Payment struct {
-		Status string `json:"status"`
-	} `json:"payment"`
+       NotificationType string `json:"notification_type"`
+       User struct {
+	       ID         string `json:"id"`
+	       ExternalID string `json:"external_id"`
+       } `json:"user"`
+       Items []struct { // For order_paid notifications
+	       SKU string `json:"sku"`
+       } `json:"items"`
+       Purchase struct {
+	       Items []struct {
+		       SKU string `json:"sku"`
+	       } `json:"items"`
+	       VirtualItems struct {
+		       Items []struct {
+			       SKU string `json:"sku"`
+		       } `json:"items"`
+	       } `json:"virtual_items"`
+       } `json:"purchase"`
+       Order struct {
+	       Status string `json:"status"`
+       } `json:"order"`
+       Payment struct {
+	       Status string `json:"status"`
+       } `json:"payment"`
 }
 
 func NewAPI(store *store.PostgresStore) *API {
@@ -427,11 +431,14 @@ func (api *API) XsollaWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	notificationType := strings.ToLower(event.NotificationType)
-	userID := event.User.ID
-	log.Printf("xsolla webhook notification_type=%s user.id=%s", notificationType, userID)
+	       notificationType := strings.ToLower(event.NotificationType)
+	       userID := event.User.ID
+	       if userID == "" {
+		       userID = event.User.ExternalID // Xsolla uses ExternalID for order_paid
+	       }
+	       log.Printf("xsolla webhook notification_type=%s user.id=%s", notificationType, userID)
 
-	switch notificationType {
+	       switch notificationType {
 	case "user_validation":
 		if userID != "" {
 			log.Println("user_validation received:", userID)
@@ -476,13 +483,18 @@ func (api *API) XsollaWebhook(w http.ResponseWriter, r *http.Request) {
 }
 
 func extractWebhookSKU(event xsollaWebhookEvent) string {
-	if len(event.Purchase.VirtualItems.Items) > 0 {
-		return event.Purchase.VirtualItems.Items[0].SKU
-	}
-	if len(event.Purchase.Items) > 0 {
-		return event.Purchase.Items[0].SKU
-	}
-	return ""
+       // 1. Check the top-level items array (common in order_paid)
+       if len(event.Items) > 0 && event.Items[0].SKU != "" {
+	       return event.Items[0].SKU
+       }
+       // 2. Fallback to the purchase objects
+       if len(event.Purchase.VirtualItems.Items) > 0 {
+	       return event.Purchase.VirtualItems.Items[0].SKU
+       }
+       if len(event.Purchase.Items) > 0 {
+	       return event.Purchase.Items[0].SKU
+       }
+       return ""
 }
 
 func isSuccessfulPaymentNotification(event xsollaWebhookEvent) bool {
