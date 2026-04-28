@@ -90,10 +90,8 @@ type xsollaUserClaims struct {
 
 type xsollaWebhookEvent struct {
 	NotificationType string `json:"notification_type"`
-	User             struct {
-		ID struct {
-			Value string `json:"value"`
-		} `json:"id"`
+	User struct {
+		ID string `json:"id"`
 	} `json:"user"`
 	Purchase struct {
 		Items []struct {
@@ -430,7 +428,7 @@ func (api *API) XsollaWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	notificationType := strings.ToLower(event.NotificationType)
-	userID := event.User.ID.Value
+	userID := event.User.ID
 	log.Printf("xsolla webhook notification_type=%s user.id=%s", notificationType, userID)
 
 	switch notificationType {
@@ -438,9 +436,9 @@ func (api *API) XsollaWebhook(w http.ResponseWriter, r *http.Request) {
 		if userID != "" {
 			log.Println("user_validation received:", userID)
 			_, err := api.store.DB.Exec(`
-				INSERT INTO players (username)
+				INSERT INTO players (id)
 				VALUES ($1)
-				ON CONFLICT (username) DO NOTHING
+				ON CONFLICT (id) DO NOTHING
 			`, userID)
 			if err != nil {
 				log.Println("failed to create player:", err)
