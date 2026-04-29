@@ -21,8 +21,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to connect to db: %v", err)
 	}
-	if err := store.EnsureSchema(postgresStore.DB); err != nil {
-		log.Fatalf("failed to ensure schema: %v", err)
+	if err := store.InitSchema(postgresStore.DB); err != nil {
+		log.Fatalf("failed to initialize schema: %v", err)
 	}
 	if err := store.SeedShopItems(postgresStore.DB); err != nil {
 		log.Fatalf("failed to seed shop_items: %v", err)

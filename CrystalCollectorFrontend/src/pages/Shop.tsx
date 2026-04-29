@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import ItemCard from '../components/ItemCard';
 import Navbar from '../components/Navbar';
 import { getItemColor, type ColorItem } from '../App';
+import { GTAG_EVENTS, fireEvent } from '../types/gtag';
 
 interface ShopProps {
   items: ColorItem[];
@@ -26,6 +27,13 @@ const Shop: React.FC<ShopProps> = ({
   onApplyItem,
   onLogout,
 }) => {
+  useEffect(() => {
+    if (!loading) {
+      fireEvent(GTAG_EVENTS.VIEW_ITEM_LIST, { count: items.length });
+    }
+    // Only fire when loading changes to false
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
   return (
     <div style={{ minHeight: '100vh', background: '#181a20', color: '#fff' }}>
       <Navbar onLogout={onLogout} />
