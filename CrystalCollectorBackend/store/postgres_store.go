@@ -143,8 +143,9 @@ func (s *PostgresStore) GrantItem(xsollaSub, sku string) error {
 	}
 	defer tx.Rollback()
 
+	// For this example, email is set to NULL. Adjust as needed if you have an email value.
 	if _, err = tx.Exec(
-		`INSERT INTO players (id, username) VALUES ($1::TEXT, $1::TEXT) ON CONFLICT (username) DO NOTHING`,
+		`INSERT INTO players (id, username, email) VALUES ($1::TEXT, $1::TEXT, NULL) ON CONFLICT (username) DO NOTHING`,
 		xsollaSub,
 	); err != nil {
 		return err
@@ -156,7 +157,7 @@ func (s *PostgresStore) GrantItem(xsollaSub, sku string) error {
 	}
 
 	if _, err = tx.Exec(
-		`INSERT INTO player_items (player_id, shop_item_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+		`INSERT INTO player_items (player_id, shop_item_id) VALUES ((SELECT id FROM players WHERE username = $1::TEXT), $2) ON CONFLICT DO NOTHING`,
 		xsollaSub, shopItemID,
 	); err != nil {
 		return err
