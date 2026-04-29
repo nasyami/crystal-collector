@@ -2,6 +2,7 @@ import React from 'react';
 
 interface ItemCardProps {
   name: string;
+  description?: string;
   color: string;
   price_cents?: number;
   owned: boolean;
@@ -12,6 +13,7 @@ interface ItemCardProps {
 
 const ItemCard: React.FC<ItemCardProps> = ({
   name,
+  description,
   color,
   price_cents,
   owned,
@@ -28,6 +30,7 @@ const ItemCard: React.FC<ItemCardProps> = ({
     <div style={{ border: '1px solid #333', borderRadius: 8, padding: 16, width: 160, background: '#222' }}>
       <div style={{ width: '100%', height: 56, background: color, borderRadius: 6, marginBottom: 12 }} />
       <h4 style={{ margin: 0 }}>{name}</h4>
+      {description && <p style={{ margin: '6px 0 0 0', fontSize: 12, color: '#aaa' }}>{description}</p>}
       <p style={{ margin: '8px 0 12px 0', color: '#ccc' }}>Price: {priceDisplay}</p>
       {owned ? (
         <button

@@ -11,6 +11,7 @@ import Callback from './pages/Callback';
 export interface ColorItem {
   id: string;
   name: string;
+  description?: string;
   sku?: string;
   price_cents?: number;
 }
@@ -31,10 +32,8 @@ export const getItemColor = (item: ColorItem): string => {
   if (normalized.includes('red')) return '#ff6b6b';
   if (normalized.includes('blue')) return '#4dabf7';
   if (normalized.includes('green')) return '#69db7c';
-  if (normalized.includes('yellow')) return '#ffd43b';
   if (normalized.includes('purple')) return '#b197fc';
-  if (normalized.includes('orange')) return '#ffa94d';
-  if (normalized.includes('pink')) return '#f783ac';
+  if (normalized.includes('gold')) return '#ffd700';
 
   return DEFAULT_COLOR;
 };

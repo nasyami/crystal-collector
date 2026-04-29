@@ -49,6 +49,7 @@ const Shop: React.FC<ShopProps> = ({
             <ItemCard
               key={item.id}
               name={item.name}
+              description={item.description}
               color={color}
               price_cents={item.price_cents}
               owned={ownedItemIds.includes(item.id)}
