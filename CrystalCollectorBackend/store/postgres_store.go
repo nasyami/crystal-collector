@@ -23,51 +23,53 @@ func NewPostgresStore(connStr string) (*PostgresStore, error) {
 // InitSchema creates all tables and applies column-type migrations for existing databases.
 func InitSchema(db *sql.DB) error {
 	_, err := db.Exec(`
-		   CREATE TABLE IF NOT EXISTS shop_items (
-			   id          BIGSERIAL   PRIMARY KEY,
-			   sku         TEXT        NOT NULL UNIQUE,
-			   name        TEXT        NOT NULL,
-			   description TEXT        NOT NULL,
-			   price_cents INTEGER     NOT NULL CHECK (price_cents >= 0),
-			   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-		   );
-		   CREATE TABLE IF NOT EXISTS players (
-			   id          TEXT        PRIMARY KEY,
-			   username    TEXT        NOT NULL UNIQUE,
-			   crystals    INTEGER     NOT NULL DEFAULT 0 CHECK (crystals >= 0),
-			   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-		   );
-		   CREATE TABLE IF NOT EXISTS player_items (
-			   id           BIGSERIAL   PRIMARY KEY,
-			   player_id    TEXT        NOT NULL REFERENCES players(id) ON DELETE CASCADE,
-			   shop_item_id BIGINT      NOT NULL REFERENCES shop_items(id) ON DELETE RESTRICT,
-			   created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-			   UNIQUE (player_id, shop_item_id)
-		   );
-		   CREATE TABLE IF NOT EXISTS payments (
-			   id                  BIGSERIAL   PRIMARY KEY,
-			   player_id           TEXT        NOT NULL REFERENCES players(id) ON DELETE CASCADE,
-			   provider_payment_id TEXT        NOT NULL UNIQUE,
-			   amount_cents        INTEGER     NOT NULL CHECK (amount_cents > 0),
-			   currency            CHAR(3)     NOT NULL CHECK (currency = UPPER(currency)),
-			   status              TEXT        NOT NULL CHECK (status IN ('pending', 'paid', 'failed', 'refunded')),
-			   created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
-		   );
-		   -- Migration: Ensure player_id and id columns are TEXT and constraints are correct
-		   DO $$
-		   BEGIN
-			   IF EXISTS (
-				   SELECT 1 FROM information_schema.table_constraints
-				   WHERE constraint_name = 'player_items_player_id_fkey'
-			   ) THEN
-				   EXECUTE 'ALTER TABLE player_items DROP CONSTRAINT player_items_player_id_fkey';
-			   END IF;
-		   END$$;
-		   ALTER TABLE players ALTER COLUMN id TYPE TEXT;
-		   ALTER TABLE player_items ALTER COLUMN player_id TYPE TEXT;
-		   ALTER TABLE player_items
-			   ADD CONSTRAINT player_items_player_id_fkey FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE;
-	   `)
+			  CREATE TABLE IF NOT EXISTS shop_items (
+				  id          BIGSERIAL   PRIMARY KEY,
+				  sku         TEXT        NOT NULL UNIQUE,
+				  name        TEXT        NOT NULL,
+				  description TEXT        NOT NULL,
+				  price_cents INTEGER     NOT NULL CHECK (price_cents >= 0),
+				  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+			  );
+			  CREATE TABLE IF NOT EXISTS players (
+				  id          TEXT        PRIMARY KEY,
+				  username    TEXT        NOT NULL UNIQUE,
+				  email       TEXT,
+				  crystals    INTEGER     NOT NULL DEFAULT 0 CHECK (crystals >= 0),
+				  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+			  );
+			  CREATE TABLE IF NOT EXISTS player_items (
+				  id           BIGSERIAL   PRIMARY KEY,
+				  player_id    TEXT        NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+				  shop_item_id BIGINT      NOT NULL REFERENCES shop_items(id) ON DELETE RESTRICT,
+				  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+				  UNIQUE (player_id, shop_item_id)
+			  );
+			  CREATE TABLE IF NOT EXISTS payments (
+				  id                  BIGSERIAL   PRIMARY KEY,
+				  player_id           TEXT        NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+				  provider_payment_id TEXT        NOT NULL UNIQUE,
+				  amount_cents        INTEGER     NOT NULL CHECK (amount_cents > 0),
+				  currency            CHAR(3)     NOT NULL CHECK (currency = UPPER(currency)),
+				  status              TEXT        NOT NULL CHECK (status IN ('pending', 'paid', 'failed', 'refunded')),
+				  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+			  );
+			  -- Migration: Ensure player_id and id columns are TEXT and constraints are correct
+			  ALTER TABLE players ADD COLUMN IF NOT EXISTS email TEXT;
+			  DO $$
+			  BEGIN
+				  IF EXISTS (
+					  SELECT 1 FROM information_schema.table_constraints
+					  WHERE constraint_name = 'player_items_player_id_fkey'
+				  ) THEN
+					  EXECUTE 'ALTER TABLE player_items DROP CONSTRAINT player_items_player_id_fkey';
+				  END IF;
+			  END$$;
+			  ALTER TABLE players ALTER COLUMN id TYPE TEXT;
+			  ALTER TABLE player_items ALTER COLUMN player_id TYPE TEXT;
+			  ALTER TABLE player_items
+				  ADD CONSTRAINT player_items_player_id_fkey FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE;
+		  `)
 	if err != nil {
 		return err
 	}
@@ -145,7 +147,7 @@ func (s *PostgresStore) GrantItem(xsollaSub, sku string) error {
 
 	// For this example, email is set to NULL. Adjust as needed if you have an email value.
 	if _, err = tx.Exec(
-		`INSERT INTO players (id, username, email) VALUES ($1::TEXT, $1::TEXT, NULL) ON CONFLICT (username) DO NOTHING`,
+		`INSERT INTO players (id, username, email) VALUES ($1::TEXT, $1::TEXT, $1::TEXT) ON CONFLICT (username) DO NOTHING`,
 		xsollaSub,
 	); err != nil {
 		return err
@@ -157,7 +159,7 @@ func (s *PostgresStore) GrantItem(xsollaSub, sku string) error {
 	}
 
 	if _, err = tx.Exec(
-		`INSERT INTO player_items (player_id, shop_item_id) VALUES ((SELECT id FROM players WHERE username = $1::TEXT), $2) ON CONFLICT DO NOTHING`,
+		`INSERT INTO player_items (player_id, shop_item_id) VALUES ($1::TEXT, $2) ON CONFLICT DO NOTHING`,
 		xsollaSub, shopItemID,
 	); err != nil {
 		return err
