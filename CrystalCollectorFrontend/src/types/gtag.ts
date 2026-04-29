@@ -1,4 +1,3 @@
-import { gtag } from "./gtag-global";
 
 export const GTAG_EVENTS = {
   VIEW_ITEM_LIST: 'shop_main_list_view',
