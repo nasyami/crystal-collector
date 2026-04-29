@@ -144,7 +144,7 @@ func (s *PostgresStore) GrantItem(xsollaSub, sku string) error {
 	defer tx.Rollback()
 
 	if _, err = tx.Exec(
-		`INSERT INTO players (id, username) VALUES ($1::TEXT, $1::TEXT) ON CONFLICT (id) DO NOTHING`,
+		`INSERT INTO players (id, username) VALUES ($1::TEXT, $1::TEXT) ON CONFLICT (username) DO NOTHING`,
 		xsollaSub,
 	); err != nil {
 		return err
