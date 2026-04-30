@@ -83,13 +83,14 @@ func SeedShopItems(db *sql.DB) error {
 	}
 	if count == 0 {
 		_, err := db.Exec(`
-			INSERT INTO shop_items (sku, name, description, price_cents) VALUES
-			('skin_blue',   'Blue Skin',   'A cool blue color skin for your character.',      199),
-			('skin_red',    'Red Skin',    'A bold red color skin for your character.',       199),
-			('skin_green',  'Green Skin',  'A fresh green color skin for your character.',    199),
-			('skin_purple', 'Purple Skin', 'A vibrant purple color skin for your character.', 299),
-			('skin_gold',   'Gold Skin',   'A premium gold color skin for your character.',   499)
-		`)
+			   INSERT INTO shop_items (sku, name, description, price_cents) VALUES
+			   ('skin_blue',   'Blue Skin',   'A cool blue color skin for your character.',      199),
+			   ('skin_red',    'Red Skin',    'A bold red color skin for your character.',       199),
+			   ('skin_green',  'Green Skin',  'A fresh green color skin for your character.',    199),
+			   ('skin_purple', 'Purple Skin', 'A vibrant purple color skin for your character.', 299),
+			   ('skin_gold',   'Gold Skin',   'A premium gold color skin for your character.',   499)
+			   ON CONFLICT (sku) DO NOTHING;
+		   `)
 		return err
 	}
 	return nil
